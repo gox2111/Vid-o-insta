@@ -12,11 +12,11 @@ const db=new Promise((ok,ko)=>{try{const q=indexedDB.open('vi',1);q.onupgradenee
 const idb=async(w,v)=>{const d=await db;return new Promise((ok,ko)=>{const t=d.transaction('k',w?'readwrite':'readonly').objectStore('k'),r=w?t.put(v,'s'):t.get('s');r.onsuccess=()=>ok(r.result);r.onerror=()=>ko(r.error)})};
 const save=async()=>{try{await idb(1,S)}catch(e){msg='Sauvegarde impossible sur ce navigateur.'}};
 const P=()=>S.projects.find(p=>p.id==sel),files=n=>n=='Moi'?DEF:S.chars[n],ext=b=>/mp4/.test(b.type)?'mp4':'webm';
-const exprs=n=>Object.keys(files(n)).map(k=>k.replace(/\.\w+$/,'')).filter(b=>/yeux/i.test(b)&&!/ferm/i.test(b));
+const exprs=n=>Object.keys(files(n)).map(k=>k.replace(/\.\w+$/,'')).filter(b=>/^yeux/i.test(b)&&!/ferm/i.test(b));
 const lab=b=>b.replace(/^Yeux_?/i,'').replace(/_/g,' ')||'normaux';
 const img=s=>new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.src=typeof s=='string'?s:URL.createObjectURL(s)});
 async function loadChar(n){const f=files(n),c={m:{},e:{},blink:null,face:null};for(const k in f){const i=await img(f[k]),b=k.replace(/\.\w+$/,'');
-if(/^[A-HX]$/i.test(b))c.m[b.toUpperCase()]=i;else if(/yeux/i.test(b)){if(/ferm/i.test(b))c.blink=i;else c.e[b]=i}else c.face=i}return c}
+if(/^[A-HX]$/i.test(b))c.m[b.toUpperCase()]=i;else if(/^yeux/i.test(b)){if(/ferm/i.test(b))c.blink=i;else c.e[b]=i}else c.face=i}return c}
 function analyse(buf){const d=buf.getChannelData(0),h=buf.sampleRate/FPS|0,n=Math.ceil(d.length/h),r=[],z=[];
 for(let i=0;i<n;i++){let s=0,c=0,p=0;const a=Math.max(0,i*h-h/2|0),b=Math.min(d.length,(i+1)*h+h/2|0);for(let j=a;j<b;j++){s+=d[j]*d[j];if(j>a&&(d[j]>0)!=(p>0))c++;p=d[j]}r.push(Math.sqrt(s/(b-a||1)));z.push(c/(b-a||1))}
 const sm=r.map((x,i)=>(x+(r[i-1]??x))/2),q=(a,p)=>[...a].sort((x,y)=>x-y)[Math.floor(a.length*p)]||0,thr=Math.max(q(r,.1)*4,.01),v=sm.map(x=>x>thr),ref=q(sm.filter(x=>x>thr),.95)||1,zm=q(z.filter((_,i)=>v[i]),.5);
@@ -50,7 +50,7 @@ rec=new MediaRecorder(s,mt?{mimeType:mt}:{});ch=[];rec.ondataavailable=e=>ch.pus
 async function go(){const p=P();msg='Création…';ui();try{p.video=await render(p);msg='Vidéo prête.';await save()}catch(e){msg='Erreur : '+e.message}ui()}
 async function share(){const p=P(),f=new File([p.video],p.name+'.'+ext(p.video),{type:p.video.type});try{await navigator.share({files:[f]})}catch(e){msg='Partage indisponible : appuie longuement sur la vidéo.';ui()}}
 async function addChar(fl){const n=document.getElementById('cn').value.trim()||'Perso '+(Object.keys(S.chars).length+1),o={};for(const f of fl)o[f.name]=f;
-if(!Object.keys(o).some(k=>!/^[A-HX]\.\w+$/i.test(k)&&!/yeux/i.test(k))||!exprs0(o)){msg='Il manque le visage ou les yeux.';ui();return}S.chars[n]=o;const p=P();if(p){p.char=n;p.expr=exprs(n).find(b=>/ouvert/i.test(b))||exprs(n)[0]}await save();ui()}
-const exprs0=o=>Object.keys(o).some(k=>/yeux/i.test(k)&&!/ferm/i.test(k));
+if(!Object.keys(o).some(k=>!/^[A-HX]\.\w+$/i.test(k)&&!/^yeux/i.test(k))||!exprs0(o)){msg='Il manque le visage ou les yeux.';ui();return}S.chars[n]=o;const p=P();if(p){p.char=n;p.expr=exprs(n).find(b=>/ouvert/i.test(b))||exprs(n)[0]}await save();ui()}
+const exprs0=o=>Object.keys(o).some(k=>/^yeux/i.test(k)&&!/ferm/i.test(k));
 (async()=>{try{const s=await idb(0);if(s)S=s}catch(e){}ui()})();
 </script></body></html>
