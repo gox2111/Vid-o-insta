@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>Vidéo Insta</title>
+<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>GoxLab</title>
 <style>:root{--bg:#fff;--fg:#1a1a1a;--card:#f2f2f4;--ac:#e4572e;--mu:#777;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 @media(prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#17171a;--fg:#f0f0f0;--card:#26262b;--mu:#999}}
 html,body{margin:0;background:var(--bg);color:var(--fg);font:16px system-ui,sans-serif}main{max-width:480px;margin:auto;padding:14px}
@@ -17,14 +17,14 @@ const lab=b=>b.replace(/^Yeux_?/i,'').replace(/_/g,' ')||'normaux';
 const img=s=>new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.src=typeof s=='string'?s:URL.createObjectURL(s)});
 async function loadChar(n){const f=files(n),c={m:{},e:{},blink:null,face:null};for(const k in f){const i=await img(f[k]),b=k.replace(/\.\w+$/,'');
 if(/^[A-HX]$/i.test(b))c.m[b.toUpperCase()]=i;else if(/^yeux/i.test(b)){if(/ferm/i.test(b))c.blink=i;else c.e[b]=i}else c.face=i}return c}
-function analyse(buf){const d=buf.getChannelData(0),h=buf.sampleRate/FPS|0,n=Math.ceil(d.length/h),r=[],z=[];
+function analyse(buf,k=1,sh=1){const d=buf.getChannelData(0),h=buf.sampleRate/FPS|0,n=Math.ceil(d.length/h),r=[],z=[];
 for(let i=0;i<n;i++){let s=0,c=0,p=0;const a=Math.max(0,i*h-h/2|0),b=Math.min(d.length,(i+1)*h+h/2|0);for(let j=a;j<b;j++){s+=d[j]*d[j];if(j>a&&(d[j]>0)!=(p>0))c++;p=d[j]}r.push(Math.sqrt(s/(b-a||1)));z.push(c/(b-a||1))}
 const sm=r.map((x,i)=>(x+(r[i-1]??x))/2),q=(a,p)=>[...a].sort((x,y)=>x-y)[Math.floor(a.length*p)]||0,thr=Math.max(q(r,.1)*4,.01),v=sm.map(x=>x>thr),ref=q(sm.filter(x=>x>thr),.95)||1,zm=q(z.filter((_,i)=>v[i]),.5);
-let m=sm.map((x,i)=>{if(!v[i])return'X';const l=Math.max(...sm.slice(Math.max(0,i-8),i+9)),L=.5*Math.min(x/ref,1.2)+.5*Math.min(x/(l+1e-9),1)*Math.min(Math.max(l/ref,.3),1),hi=z[i]>zm;return L<.38?(hi?'B':'F'):L<.7?(hi?'C':'E'):'D'});
-m=m.slice(1).concat('X');for(let i=1;i<n-1;i++)if(m[i]!=m[i-1]&&m[i]!=m[i+1]&&m[i]!='X')m[i]=m[i-1];
+let m=sm.map((x,i)=>{if(!v[i])return'X';const l=Math.max(...sm.slice(Math.max(0,i-8),i+9)),L=.5*Math.min(x/ref,1.2)+.5*Math.min(x/(l+1e-9),1)*Math.min(Math.max(l/ref,.3),1),hi=z[i]>zm;return L<.38*k?(hi?'B':'F'):L<.7*k?(hi?'C':'E'):'D'});
+m=m.slice(sh).concat(Array(sh).fill('X'));for(let i=1;i<n-1;i++)if(m[i]!=m[i-1]&&m[i]!=m[i+1]&&m[i]!='X')m[i]=m[i-1];
 for(let i=1;i<n;i++)if(m[i]!='X'&&m[i-1]=='X')m[i-1]='A';return m}
 async function render(p,AC){step='images';const C=await loadChar(p.char);step='décodage audio';
-const buf=await new Promise((ok,ko)=>p.audio.arrayBuffer().then(a=>AC.decodeAudioData(a,ok,ko))),m=analyse(buf),n=m.length,bl=new Set();
+const buf=await new Promise((ok,ko)=>p.audio.arrayBuffer().then(a=>AC.decodeAudioData(a,ok,ko))),m=analyse(buf,p.sens||1,p.dec??1),n=m.length,bl=new Set();
 if(/ouvert/i.test(p.expr)&&C.blink){let t=1.5+Math.random()*1.5;while(t*FPS<n-4){for(let j=0;j<3;j++)bl.add((t*FPS|0)+j);t+=1.8+Math.random()*1.8}}
 const cv=document.createElement('canvas');cv.width=W;cv.height=H;const g=cv.getContext('2d');
 const draw=i=>{g.fillStyle='#fff';g.fillRect(0,0,W,H);g.drawImage(C.face,0,0,W,H);g.drawImage(bl.has(i)?C.blink:C.e[p.expr],0,0,W,H);g.drawImage(C.m[m[i]]||C.m.X,0,0,W,H)};
@@ -34,16 +34,17 @@ mr.ondataavailable=e=>parts.push(e.data);const fin=new Promise(ok=>mr.onstop=ok)
 const iv=setInterval(()=>{const i=Math.min(n-1,(AC.currentTime-t0)*FPS|0);draw(i);msg='Création… '+Math.round(i/n*100)+' %';document.getElementById('st').textContent=msg},33);
 await new Promise(ok=>src.onended=ok);await new Promise(ok=>setTimeout(ok,400));clearInterval(iv);mr.stop();await fin;AC.close();return new Blob(parts,{type:mr.mimeType||mt})}
 const url=b=>URL.createObjectURL(b);
-function ui(){const p=P(),cn=['Moi',...Object.keys(S.chars)];let h=`<h1>Vidéo Insta</h1><h2>Dossiers</h2><div class="r"><input type="text" id="nn" placeholder="Nom de la vidéo"><button onclick="nouveau()">+ Dossier</button></div><div class="r">`+S.projects.map(x=>`<button class="s ${x.id==sel?'on':''}" onclick="sel=${x.id};msg='';conf=false;ui()">${x.name}</button>`).join('')+`</div>`;
+function ui(){const p=P(),cn=['Moi',...Object.keys(S.chars)];let h=`<h1>GoxLab</h1><h2>Dossiers</h2><div class="r"><input type="text" id="nn" placeholder="Nom de la vidéo"><button onclick="nouveau()">+ Dossier</button></div><div class="r">`+S.projects.map(x=>`<button class="s ${x.id==sel?'on':''}" onclick="sel=${x.id};msg='';conf=false;ui()">${x.name}</button>`).join('')+`</div>`;
 if(p){h+=`<div class="c"><b>${p.name}</b><div class="r"><label>Perso <select onchange="chg('char',this.value)">${cn.map(c=>`<option ${c==p.char?'selected':''}>${c}</option>`).join('')}</select></label>
 <label>Expression <select onchange="chg('expr',this.value)">${exprs(p.char).map(b=>`<option value="${b}" ${b==p.expr?'selected':''}>${lab(b)}</option>`).join('')}</select></label></div>
-<div class="r"><button onclick="toggleRec()">${recOn?'■ Stop':'● Enregistrer'}</button><label class="s">ou <input type="file" accept="audio/*" onchange="imp(this.files[0])"></label></div>${p.audio?`<audio controls src="${url(p.audio)}"></audio><button onclick="go()">Créer la vidéo</button>`:''}
-<small id="st">${msg}</small>${p.video?`<video controls playsinline src="${url(p.video)}"></video><button class="s" onclick="share()">Partager / enregistrer</button>`:''}<div class="r" style="margin-top:10px"><input type="text" id="rn" placeholder="Renommer"><button class="s" onclick="renomme()">Renommer</button><button class="s" onclick="supp()">${conf?'Confirmer la suppression':'Supprimer le dossier'}</button></div></div>`}
+<div class="r"><button onclick="toggleRec()">${recOn?'■ Stop':'● Enregistrer'}</button><label class="s">ou <input type="file" accept="audio/*" onchange="imp(this.files[0])"></label></div>${p.audio?`<audio controls src="${url(p.audio)}"></audio><div class="r"><label>Ouverture <select onchange="chg('sens',+this.value)">${[[.8,'Plus ouverte'],[1,'Normale'],[1.25,'Moins ouverte']].map(([v,l])=>`<option value="${v}" ${(p.sens||1)==v?'selected':''}>${l}</option>`).join('')}</select></label><label>Timing <select onchange="chg('dec',+this.value)">${[[0,'Plus tard'],[1,'Normal'],[2,'Plus tôt'],[3,'Encore plus tôt']].map(([v,l])=>`<option value="${v}" ${(p.dec??1)==v?'selected':''}>${l}</option>`).join('')}</select></label></div><button onclick="go()">${p.video?'Refaire la vidéo':'Créer la vidéo'}</button>`:''}
+<small id="st">${msg}</small>${p.video?`<video controls playsinline src="${url(p.video)}"></video><button class="s" onclick="share()">Partager / enregistrer</button><button class="s" onclick="suppVideo()">Supprimer la vidéo</button>`:''}<div class="r" style="margin-top:10px"><input type="text" id="rn" placeholder="Renommer"><button class="s" onclick="renomme()">Renommer</button><button class="s" onclick="supp()">${conf?'Confirmer la suppression':'Supprimer le dossier'}</button></div></div>`}
 h+=`<h2>Personnages</h2><div class="c"><small>Ajouter un perso : visage sans yeux ni bouche, bouches A à H et X.png, fichiers « Yeux… » (un fichier « fermés » sert au clignement).</small><div class="r"><input type="text" id="cn" placeholder="Nom du perso"><input type="file" multiple accept="image/png" onchange="addChar(this.files)"></div></div>`;
-h+='<p><small>Version 4</small></p>';document.getElementById('m').innerHTML=h}
+h+='<p><small>Version 5</small></p>';document.getElementById('m').innerHTML=h}
 const chg=(k,v)=>{const p=P();p[k]=v;if(k=='char')p.expr=exprs(v).find(b=>/ouvert/i.test(b))||exprs(v)[0];save();ui()};
 async function supp(){if(!conf){conf=true;ui();setTimeout(()=>{conf=false;ui()},5000);return}S.projects=S.projects.filter(x=>x.id!=sel);sel=null;conf=false;await save();ui()}
 async function renomme(){const n=document.getElementById('rn').value.trim();if(!n)return;P().name=n;await save();ui()}
+async function suppVideo(){P().video=null;msg='Vidéo supprimée.';await save();ui()}
 async function nouveau(){const n=document.getElementById('nn').value.trim();if(!n)return;const id=Date.now();S.projects.push({id,name:n,char:'Moi',expr:'Yeux_normaux_ouverts'});sel=id;await save();ui()}
 async function setAudio(b){const p=P();p.audio=b;p.video=null;msg='';await save();ui()}
 const imp=f=>f&&setAudio(f);
